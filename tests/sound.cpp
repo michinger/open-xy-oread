@@ -112,7 +112,7 @@ int main() {
         check("no wrapped samples (jumps) at full intensity", jump < 1.5);
         double settled = 0;
         for (size_t i = end - 44100; i < end; ++i) settled = std::fmax(settled, std::fmax(std::fabs(run.left[i]), std::fabs(run.right[i])));
-        check("the limiter holds full feedback under -2 dBFS", settled < 0.8);
+        check("the limiter holds full feedback under -8 dBFS", settled < 0.4);
     }
     // The Feedback knob's curve rises steadily and self-oscillates only near the top.
     {
@@ -124,9 +124,23 @@ int main() {
             last = f;
         }
         check("the feedback curve never falls", rising);
-        // The loop gain is 1.5 times the word: below 1 until about 90 %.
-        check("no self-oscillation at 85 %", 1.5 * oread::feedback_for(static_cast<opxy::i32>(0.85 * 2147483647.0)) / 2147483648.0 < 1.0);
-        check("self-oscillation at 95 %", 1.5 * oread::feedback_for(static_cast<opxy::i32>(0.95 * 2147483647.0)) / 2147483648.0 > 1.0);
+        // The curve holds the loop gain / 1.25: below 1 until about 90 %.
+        check("no self-oscillation at 85 %", 1.25 * oread::feedback_for(static_cast<opxy::i32>(0.85 * 2147483647.0)) / 2147483648.0 < 1.0);
+        check("self-oscillation at 95 %", 1.25 * oread::feedback_for(static_cast<opxy::i32>(0.95 * 2147483647.0)) / 2147483648.0 > 1.0);
+    }
+    // The knob means the same in every mode: at 85 % even all three heads die away,
+    // and at 40 % the repeats fade fast.
+    for (unsigned m : {0u, 3u, 10u}) {
+        for (double knob : {0.4, 0.85}) {
+            Run run(m, kFull / 2, static_cast<opxy::i32>(knob * 2147483647.0));
+            unsigned n = 3;
+            run.blocks(700, [&](size_t i) { n = n * 1664525u + 1013904223u; return i > start && i < start + 4410 ? static_cast<opxy::i32>(n) / 4 : 0; });
+            run.blocks(2100, zero);  // 3 s of silence in
+            const double rest = peak(run.left, run.left.size() - 4410, run.left.size());
+            char what[64];
+            std::snprintf(what, sizeof what, "mode %u at %.0f %% dies away (%.4f)", m, knob * 100, rest);
+            check(what, rest < (knob < 0.5 ? 1e-4 : 0.02));
+        }
     }
     // Bass reaches the spring on both sides: cut against boost changes the right's tail too.
     {

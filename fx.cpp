@@ -29,14 +29,20 @@ const i32 kMostMotion = 8589935;           // 0.4 % speed deviation at Wear 1
 const i32 kBrightest = 1181116006;         // 0.55
 const i32 kWearDarkening = 644245094;      // 0.30
 const i32 kRumble = 25769803;              // 0.012
-// Feedback: the loop gain is 1.5 times this word (times 4 below, then the
-// record head's 0.375). The knob follows a curve rather than a line: up to 85 %
-// the number of repeats before they fade by 60 dB grows exponentially, from 1
-// to 60, so the musical range gets most of the travel; from there the gain
-// rises to 1.2, self-oscillating from about 90 %. 17 points, interpolated.
-const i32 kFeedbackCurve[17] = {0, 8624359, 32574157, 87092946, 180326746, 309007501, 460331089,
-                                618260791, 769079993, 903913564, 1018695776, 1112923891, 1188224239,
-                                1247210744, 1349634940, 1533810929, 1717986918};
+// Feedback. The loop's gain is 3 x the feedback word x the sum of the mode's
+// head gains: the repeats are added 4 times, and the record head's soft clip
+// (1.5x for small signals) is halved onto the tape. The knob sets the loop
+// gain itself, the same in every mode, along a curve: up to 85 % the number of
+// repeats before they fade by 60 dB grows exponentially, from 1 to 60, so the
+// musical range gets most of the travel; from there the gain rises to 1.2,
+// self-oscillating from about 90 %. 17 points of gain / 1.25, interpolated.
+const i32 kFeedbackCurve[17] = {0, 10349231, 39088988, 104511535, 216392095, 370809002, 552397307,
+                                741912950, 922895991, 1084696277, 1222434932, 1335508669, 1425869086,
+                                1496652893, 1619561928, 1840573115, 2061584302};
+// Per mode, 1.25 / (3 x its heads' sum), turning a loop gain into the word.
+const i32 kOneHead = 894784853, kTwoHeads = 639132038, kThreeHeads = 514244169;
+const i32 kModeFeedback[12] = {kOneHead, kOneHead, kOneHead, kTwoHeads, kOneHead, kOneHead,
+                               kOneHead, kTwoHeads, kTwoHeads, kTwoHeads, kThreeHeads, 0};
 // The spring: four stretched allpasses (dispersion, the spring's chirp) into a
 // 42 ms line, damped and fed back. The left hears the line's end, the right
 // a point 12 ms earlier, so the tail is wide while the echo stays centred.
@@ -61,9 +67,9 @@ const i32 kChirp[16] = {1288490189, 1324281583, 1360072977, 1395864371, 14316557
 const i32 kDriveGain[8] = {134217728, 201326592, 268435456, 402653184,
                            536870912, 805306368, 1073741824, 1610612736};  // Q27
 const i32 kDriveBack[8] = {0, 954437177, 715827883, 477218588, 357913941, 238609294, 178956971, 119304647};
-// The output limiter holds the return's peaks under about -3 dBFS, reacting
+// The output limiter holds the return's peaks under about -9 dBFS, reacting
 // within a block and recovering over about 50 ms.
-const i32 kCeiling = 1520000000;           // 0.708
+const i32 kCeiling = 760000000;            // 0.354: -9 dBFS
 const i32 kRecovery = 32;                  // blocks: a 32nd of the way back per block
 // Bass and treble: shelving around 250 Hz and 3 kHz, from cut to +6 dB.
 const i32 kBassCorner = 75161928;          // 0.035
@@ -191,7 +197,7 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     // The tape motor glides to a new speed, a ramp each block.
     const i32 delay_step = (target_delay - state.delay) / kGlide / static_cast<i32>(opxy::block_frames);
     const i32* const heads = kModeHeads[mode];
-    state.feedback = smooth(state.feedback, feedback_for(parameters[2]));
+    state.feedback = smooth(state.feedback, multiply(feedback_for(parameters[2]), kModeFeedback[mode]));
     // The Shift row: decay, tone, chirp and drive of the spring.
     if (!state.limit) {  // first block after initialize: start at the set values
         state.spring_feedback = kDecay[choice(parameters[8], 16)];
