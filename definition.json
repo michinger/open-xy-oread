@@ -4,25 +4,215 @@
   "name": "Oread",
   "press": "page",
   "parameters": [
-    {"id": "mode", "label": "Mode", "default": 0.375, "display": "enum",
-     "mapping": {"kind": "enum", "labels": ["1", "2", "3", "2+3", "1+R", "2+R", "3+R", "1+2+R", "2+3+R", "1+3+R", "1+2+3+R", "R"]}},
-    {"id": "rate", "label": "Rate", "default": 0.5, "display": "percent",
-     "mapping": {"kind": "linear", "minimum": 0, "maximum": 1}},
-    {"id": "intensity", "label": "Intens", "default": 0.4, "display": "percent",
-     "mapping": {"kind": "linear", "minimum": 0, "maximum": 1}},
-    {"id": "echo", "label": "Echo", "default": 0.7, "display": "percent",
-     "mapping": {"kind": "linear", "minimum": 0, "maximum": 1}},
-    {"id": "reverb", "label": "Reverb", "default": 0.35, "display": "percent", "control": 0,
-     "mapping": {"kind": "linear", "minimum": 0, "maximum": 1}},
-    {"id": "bass", "label": "Bass", "default": 0.5, "display": "bipolar", "control": 1,
-     "mapping": {"kind": "linear", "minimum": -1, "maximum": 1}},
-    {"id": "treble", "label": "Treble", "default": 0.5, "display": "bipolar", "control": 2,
-     "mapping": {"kind": "linear", "minimum": -1, "maximum": 1}},
-    {"id": "wear", "label": "Wear", "default": 0, "display": "percent", "control": 3,
-     "mapping": {"kind": "linear", "minimum": 0, "maximum": 1}}
+    {
+      "id": "mode",
+      "label": "Mode",
+      "default": 0.375,
+      "display": "enum",
+      "mapping": {
+        "kind": "enum",
+        "labels": [
+          "1",
+          "2",
+          "3",
+          "2+3",
+          "1+R",
+          "2+R",
+          "3+R",
+          "1+2+R",
+          "2+3+R",
+          "1+3+R",
+          "1+2+3+R",
+          "R"
+        ]
+      }
+    },
+    {
+      "id": "rate",
+      "label": "Rate",
+      "default": 0.5,
+      "display": "percent",
+      "mapping": {
+        "kind": "linear",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "id": "feedback",
+      "label": "Feedback",
+      "default": 0.4,
+      "display": "percent",
+      "mapping": {
+        "kind": "linear",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "id": "echo",
+      "label": "Echo",
+      "default": 0.7,
+      "display": "percent",
+      "mapping": {
+        "kind": "linear",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "id": "reverb",
+      "label": "Reverb",
+      "default": 0.35,
+      "display": "percent",
+      "control": 0,
+      "mapping": {
+        "kind": "linear",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "id": "bass",
+      "label": "Bass",
+      "default": 0.5,
+      "display": "bipolar",
+      "control": 1,
+      "mapping": {
+        "kind": "linear",
+        "minimum": -1,
+        "maximum": 1
+      }
+    },
+    {
+      "id": "treble",
+      "label": "Treble",
+      "default": 0.5,
+      "display": "bipolar",
+      "control": 2,
+      "mapping": {
+        "kind": "linear",
+        "minimum": -1,
+        "maximum": 1
+      }
+    },
+    {
+      "id": "wear",
+      "label": "Wear",
+      "default": 0,
+      "display": "percent",
+      "control": 3,
+      "mapping": {
+        "kind": "linear",
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
   ],
   "presets": {},
   "resources": {
     "bufferBytes": 139776
-  }
+  },
+  "shift": [
+    {
+      "id": "decay",
+      "label": "Decay",
+      "default": 0,
+      "display": "enum",
+      "mapping": {
+        "kind": "enum",
+        "labels": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15"
+        ]
+      }
+    },
+    {
+      "id": "tone",
+      "label": "Tone",
+      "default": 0,
+      "display": "enum",
+      "mapping": {
+        "kind": "enum",
+        "labels": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15"
+        ]
+      }
+    },
+    {
+      "id": "chirp",
+      "label": "Chirp",
+      "default": 0,
+      "display": "enum",
+      "mapping": {
+        "kind": "enum",
+        "labels": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15"
+        ]
+      }
+    },
+    {
+      "id": "drive",
+      "label": "Drive",
+      "default": 0,
+      "display": "enum",
+      "mapping": {
+        "kind": "enum",
+        "labels": [
+          "off",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      }
+    }
+  ]
 }

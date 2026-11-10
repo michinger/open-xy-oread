@@ -21,7 +21,10 @@ struct State {
     opxy::i32 feedback, bass, treble, damping; // controls smoothed per block
     opxy::i32 low_loop, rumble;     // the tape loop's high-frequency loss and low cut
     opxy::i32 spring_damp;          // the spring's damping filter
-    opxy::i32 tone_low, tone_high;  // bass and treble filters
+    opxy::i32 tone_low, tone_high;  // bass and treble filters, left
+    opxy::i32 tone_low_r, tone_high_r;  // bass and treble filters, right
+    opxy::i32 spring_feedback, spring_tone, chirp;  // Shift row settings, smoothed per block
+    opxy::i32 limit;                // output limiter gain, Q31 (0: not started)
 };
 void initialize(State& state);
 void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channel right,

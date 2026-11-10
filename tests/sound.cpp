@@ -18,14 +18,14 @@ static opxy::i32 mode(unsigned index) { return static_cast<opxy::i32>((index * 2
 
 struct Run {
     oread::State state;
-    opxy::i32 p[8];
+    opxy::i32 p[12];
     std::vector<double> left, right;
     Run(unsigned m, opxy::i32 rate, opxy::i32 intensity) {
         // A dirty buffer, as the slot's previous effect leaves it.
         for (opxy::u32 i = 0; i < oread::kBufferWords; ++i) words[i] = static_cast<opxy::i32>(i * 2654435761u);
         oread::initialize(state);
-        const opxy::i32 q[8] = {mode(m), rate, intensity, kFull, kFull / 2, kFull / 2 + 1, kFull / 2 + 1, 0};
-        for (unsigned i = 0; i < 8; ++i) p[i] = q[i];
+        const opxy::i32 q[12] = {mode(m), rate, intensity, kFull, kFull / 2, kFull / 2 + 1, kFull / 2 + 1, 0, 0, 0, 0, 0};
+        for (unsigned i = 0; i < 12; ++i) p[i] = q[i];
     }
     template <class Input> void blocks(unsigned count, Input input) {
         opxy::i32 l[opxy::block_frames], r[opxy::block_frames];
@@ -57,7 +57,7 @@ int main() {
     const size_t kImpulse = start + 100;
     auto impulse = [&](size_t n) { return n == kImpulse ? 0x40000000 : 0; };
 
-    // Head timing: heads at 1, 2 and 3 times head 1's 190 ms (Rate 0) and 55 ms (Rate 1).
+    // Head timing: heads at 1, 2 and 3 times head 1's 190 ms (Rate 0) and 27.5 ms (Rate 1).
     const double slowest = 8379;
     for (unsigned head = 0; head < 3; ++head) {
         Run run(head, 0, 0);
@@ -71,7 +71,7 @@ int main() {
         Run run(2, kFull, 0);
         run.blocks(300, impulse);
         const size_t at = loudest(run.left, kImpulse + 100, run.left.size());
-        check("head 3 at Rate 1 lands near 165 ms", std::fabs(double(at - kImpulse) - 3 * 2425.6) <= 4);
+        check("head 3 at Rate 1 lands near 82.5 ms", std::fabs(double(at - kImpulse) - 3 * 1212.7) <= 4);
     }
     // Two heads together, with a repeat of the earlier one's level.
     {
@@ -110,6 +110,50 @@ int main() {
         double jump = 0;
         for (size_t i = end - 44100; i < end; ++i) jump = std::fmax(jump, std::fabs(run.left[i] - run.left[i - 1]));
         check("no wrapped samples (jumps) at full intensity", jump < 1.5);
+        double settled = 0;
+        for (size_t i = end - 44100; i < end; ++i) settled = std::fmax(settled, std::fmax(std::fabs(run.left[i]), std::fabs(run.right[i])));
+        check("the limiter holds full feedback under -2 dBFS", settled < 0.8);
+    }
+    // The Feedback knob's curve rises steadily and self-oscillates only near the top.
+    {
+        bool rising = true;
+        opxy::i32 last = -1;
+        for (unsigned k = 0; k <= 256; ++k) {
+            const opxy::i32 f = oread::feedback_for(static_cast<opxy::i32>(k == 256 ? 0x7fffffffu : k * 0x800000u));
+            rising = rising && f >= last;
+            last = f;
+        }
+        check("the feedback curve never falls", rising);
+        // The loop gain is 1.5 times the word: below 1 until about 90 %.
+        check("no self-oscillation at 85 %", 1.5 * oread::feedback_for(static_cast<opxy::i32>(0.85 * 2147483647.0)) / 2147483648.0 < 1.0);
+        check("self-oscillation at 95 %", 1.5 * oread::feedback_for(static_cast<opxy::i32>(0.95 * 2147483647.0)) / 2147483648.0 > 1.0);
+    }
+    // Bass reaches the spring on both sides: cut against boost changes the right's tail too.
+    {
+        auto tail = [&](opxy::i32 bass, bool right) {
+            Run run(11, 0, 0);
+            run.p[5] = bass;
+            unsigned n = 7;
+            run.blocks(300, [&](size_t i) { n = n * 1664525u + 1013904223u; return i > start && i < start + 2205 ? static_cast<opxy::i32>(n) / 8 : 0; });
+            const std::vector<double>& x = right ? run.right : run.left;
+            double low = 0, sum = 0;  // a crude low-pass's energy over the tail
+            for (size_t i = start + 2205; i < x.size(); ++i) { low += (x[i] - low) * 0.02; sum += low * low; }
+            return sum;
+        };
+        check("bass shapes the left spring", tail(kFull, false) > 2 * tail(0, false));
+        check("bass shapes the right spring", tail(kFull, true) > 2 * tail(0, true));
+    }
+    // The Shift row: a longer decay rings longer, and drive keeps the spring bounded.
+    {
+        auto ring = [&](opxy::i32 decay, opxy::i32 drive) {
+            Run run(11, 0, 0);
+            run.p[8] = decay;
+            run.p[11] = drive;
+            run.blocks(1400, impulse);  // about 2 s
+            return peak(run.left, kImpulse + 44100, run.left.size());
+        };
+        check("decay 15 rings longer than decay 0", ring(kFull, 0) > 4 * ring(0, 0));
+        check("full drive stays bounded", ring(0, kFull) < 1.0);
     }
     // No intensity and no spring: one repeat, then silence; silence in, silence out.
     {
@@ -163,7 +207,7 @@ int main() {
     {
         oread::State state;
         oread::initialize(state);
-        opxy::i32 l[opxy::block_frames], r[opxy::block_frames], p[8] = {};
+        opxy::i32 l[opxy::block_frames], r[opxy::block_frames], p[12] = {};
         for (unsigned i = 0; i < opxy::block_frames; ++i) l[i] = r[i] = 0x10000000;
         oread::process(state, opxy::Buffer{nullptr, 0}, l, r, p);
         bool quiet = true;
