@@ -79,9 +79,9 @@ Unmute it everywhere.
 
 ## Tape echo and spring
 
-- [ ] Mode 1, 2 and 3 with Feedback at 0 and a short hit on track 1: one repeat each, head 2 twice and head 3
-      three times as late as head 1; 2+3 gives two repeats
-- [ ] Rate at 0 then 100: repeats go from slow (head 1 about 190 ms) to fast (about 27.5 ms); turning Rate
+- [ ] Mode 1, 2 and 3 with Feedback at 0 and a short hit on track 1: one repeat each, head 2 about 1.9 and head 3
+      about 2.75 times as late as head 1; 2+3 gives two repeats
+- [ ] Rate at 0 then 100: repeats go from slow (head 1 about 177 ms) to fast (about 69 ms); turning Rate
       while repeats ring glides their pitch, like a tape motor, with no clicks
 - [ ] Feedback from 0 up, in mode 1 and in 1+2+3+R: repeats last longer at the same knob position in both;
       at 40 they fade quickly; only above about 90 does it self-oscillate, and turning it down lets it die away

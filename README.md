@@ -8,9 +8,10 @@ repository's root.
 
 ## Sound
 
-- **Tape loop:** one record head and three playback heads at 1 : 2 : 3
-  spacing (an approximation of the original's head spacing). Head 1 is 190 ms
-  at Rate 0 and 27.5 ms at Rate 100; heads 2 and 3 are two and three times later.
+- **Tape loop:** one record head and three playback heads at 1 : 1.9 : 2.75
+  spacing, as on the original. Head 1 is 177 ms at Rate 0 and 69 ms at Rate
+  100 (heads 2 and 3: 337 to 131 ms, 488 to 190 ms), close to the original's
+  range.
   Rate is tape speed: a change glides (about 0.37 s), bending the repeats'
   pitch as a capstan motor would.
 - **Mode** (12 choices, as on the original's selector): `1`, `2`, `3`, `2+3`

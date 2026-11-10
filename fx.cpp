@@ -3,7 +3,7 @@
 
 // A three-head tape echo with a spring reverb, after the classic studio tape
 // echoes of the 1970s. A loop of tape passes one record head and three
-// playback heads at 1 : 2 : 3 spacing; Mode picks which heads (and whether
+// playback heads at the original's 1 : 1.9 : 2.75 spacing; Mode picks which heads (and whether
 // the spring) sound, Rate the tape speed, Intensity how much of the heads is
 // recorded again. Everything is Q31; the send returns only echo and reverb.
 namespace oread {
@@ -15,10 +15,12 @@ using opxy::q31::half;
 using opxy::q31::multiply;
 const i32 kMaximum = opxy::q31::maximum;
 
-// Head 1 between 190 ms (Rate 0) and 27.5 ms (Rate 1); heads 2 and 3 at two and
-// three times that. Speed rises linearly with Rate, as a capstan motor's does.
-const u32 kSlowest = 8379;                 // samples: 190 ms
-const u32 kSpeedSpan = 193629;             // (190 / 27.5 - 1) in Q15
+// Head 1 between 177 ms (Rate 0) and 69 ms (Rate 1), heads 2 and 3 at 1.9 and
+// 2.75 times that: close to the original's range and spacing. Speed rises linearly with Rate, as a capstan motor's does.
+const u32 kSlowest = 7806;                 // samples: 177 ms
+const u32 kSpeedSpan = 51289;              // (177 / 69 - 1) in Q15
+const i32 kHead2 = 1932735283;             // head 2 is 1 + 0.9 times head 1's delay
+const i32 kHead3 = 1610612736;             // head 3 is 2 + 0.75 times
 const u32 kMask = kTape - 1;
 const i32 kGlide = 256;                    // blocks: tape speed settles in about 0.37 s
 // Wow (0.8 Hz), drift (0.13 Hz) and flutter (7 Hz): phase steps per block.
@@ -257,8 +259,9 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         // Playback: three heads (tape samples are at most half scale, so their
         // weighted sum stays below full scale), then the tape's
         // high-frequency loss and low cut.
-        const i32 heard = multiply(tap(tape, write, d1), h0) + multiply(tap(tape, write, d1 * 2), h1) +
-                          multiply(tap(tape, write, d1 * 3), h2);
+        const i32 d2 = d1 + multiply(d1, kHead2), d3 = d1 + d1 + multiply(d1, kHead3);
+        const i32 heard = multiply(tap(tape, write, d1), h0) + multiply(tap(tape, write, d2), h1) +
+                          multiply(tap(tape, write, d3), h2);
         low_loop = add(low_loop, multiply(add(heard, -low_loop), damping));
         rumble += multiply(add(low_loop, -rumble), kRumble);
         const i32 played = add(low_loop, -rumble);

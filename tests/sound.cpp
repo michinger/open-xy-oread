@@ -57,12 +57,13 @@ int main() {
     const size_t kImpulse = start + 100;
     auto impulse = [&](size_t n) { return n == kImpulse ? 0x40000000 : 0; };
 
-    // Head timing: heads at 1, 2 and 3 times head 1's 190 ms (Rate 0) and 27.5 ms (Rate 1).
-    const double slowest = 8379;
+    // Head timing: heads at 1, 1.9 and 2.75 times head 1's 177 ms (Rate 0) and 69 ms (Rate 1).
+    const double slowest = 7806;
+    const double ratio[3] = {1, 1.9, 2.75};
     for (unsigned head = 0; head < 3; ++head) {
         Run run(head, 0, 0);
         run.blocks(760, impulse);
-        const double expected = slowest * (head + 1);
+        const double expected = slowest * ratio[head];
         const size_t at = loudest(run.left, kImpulse + 100, run.left.size());
         check("head lands at its spacing (Rate 0)", std::fabs(double(at - kImpulse) - expected) <= 3);
         check("silence before the head", peak(run.left, start, kImpulse + size_t(expected) - 10) < 1e-6);
@@ -71,15 +72,15 @@ int main() {
         Run run(2, kFull, 0);
         run.blocks(300, impulse);
         const size_t at = loudest(run.left, kImpulse + 100, run.left.size());
-        check("head 3 at Rate 1 lands near 82.5 ms", std::fabs(double(at - kImpulse) - 3 * 1212.7) <= 4);
+        check("head 3 at Rate 1 lands near 190 ms", std::fabs(double(at - kImpulse) - 2.75 * 3043.0) <= 4);
     }
     // Two heads together, with a repeat of the earlier one's level.
     {
         Run run(3, 0, 0);
         run.blocks(760, impulse);
-        check("mode 2+3 sounds head 2", peak(run.left, kImpulse + 2 * 8379 - 4, kImpulse + 2 * 8379 + 4) > 0.1);
-        check("mode 2+3 sounds head 3", peak(run.left, kImpulse + 3 * 8379 - 4, kImpulse + 3 * 8379 + 4) > 0.1);
-        check("mode 2+3 skips head 1", peak(run.left, kImpulse + 8379 - 50, kImpulse + 8379 + 50) < 1e-4);
+        check("mode 2+3 sounds head 2", peak(run.left, kImpulse + 14831 - 4, kImpulse + 14831 + 4) > 0.1);
+        check("mode 2+3 sounds head 3", peak(run.left, kImpulse + 21467 - 4, kImpulse + 21467 + 4) > 0.1);
+        check("mode 2+3 skips head 1", peak(run.left, kImpulse + 7806 - 50, kImpulse + 7806 + 50) < 1e-4);
     }
     // Reverb only: no echo at head 1, but a spring tail right away.
     {
