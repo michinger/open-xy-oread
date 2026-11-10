@@ -6,7 +6,7 @@
 // playback heads at 1 : 2 : 3 spacing; Mode picks which heads (and whether
 // the spring) sound, Rate the tape speed, Intensity how much of the heads is
 // recorded again. Everything is Q31; the send returns only echo and reverb.
-namespace spool {
+namespace oread {
 namespace {
 using opxy::i32;
 using opxy::u32;

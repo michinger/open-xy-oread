@@ -1,6 +1,6 @@
 # Machine development
 
-This repository holds Spool (`spool`). The machine is at the repository root.
+This repository holds Oread (`oread`). The machine is at the repository root.
 Read README.md and use the [Open-XY SDK](https://github.com/etcetc000/open-xy)
 on `staging`, normally checked out beside this repository as `../open-xy`.
 Adjust that path if the user already has the SDK elsewhere.

@@ -1,6 +1,6 @@
-# Testing Spool on an OP-XY
+# Testing Oread on an OP-XY
 
-Checks to run on a device with a firmware that includes Spool, from top to bottom, in one project:
+Checks to run on a device with a firmware that includes Oread, from top to bottom, in one project:
 each section leaves the project ready for the next. To run only some sections, set up what their first
 line says. Host tests (`python ../open-xy/sdk.py test --machine .`) don't replace these: they can't hear
 the sound or see the screen.
@@ -19,18 +19,18 @@ removes or alters something a person would check on the device updates its lines
 
 - Build a firmware with the machine ([building firmware](https://github.com/etcetc000/open-xy/blob/staging/docs/build.md#3-add-your-machine))
   and install it.
-- Create a new project, **plain**, without Spool: give track 1 a stock sound of its own and save it.
+- Create a new project, **plain**, without Oread: give track 1 a stock sound of its own and save it.
   Later steps load it as a project that never had the machine.
 - Create another new project, **qa**, for the pass: don't use a project you care about.
 - Track 1: a stock synth, with one note on step 1 lasting a whole bar, so it sounds all the time while
-  the sequencer plays. Track 15 (a send): Spool (Shift + track 15's key, then choose it). Turn track 1's
+  the sequencer plays. Track 15 (a send): Oread (Shift + track 15's key, then choose it). Turn track 1's
   send to track 15 up.
 - Press play, and leave it playing unless a step says otherwise.
 
 ## Firmware basics
 
 - [ ] The OP-XY boots, and stock engines, effects, the sequencer and project save/load work
-- [ ] Spool is in the effect list of tracks 15 and 16 (Shift + their track keys), under its name, and in
+- [ ] Oread is in the effect list of tracks 15 and 16 (Shift + their track keys), under its name, and in
       no other track's list
 
 ## Its page and controls
@@ -47,7 +47,7 @@ removes or alters something a person would check on the device updates its lines
 - [ ] Page 1 shows mode, rate, intens, echo; a press of any encoder shows page 2 (reverb, bass, treble,
       wear) on all four at once, and another press returns. Each control keeps its value across pages
 - [ ] Mode steps one choice per detent through 1, 2, 3, 2+3, 1+R, 2+R, 3+R, 1+2+R, 2+3+R, 1+3+R, 1+2+3+R, R
-- [ ] Track 1's own sound stays at its level as the send rises (Spool has no Dry control)
+- [ ] Track 1's own sound stays at its level as the send rises (Oread has no Dry control)
 - [ ] Stop the sequencer while a note rings: the effect's tail ends naturally, with no click
 - [ ] The same effect on track 16, at the same time as on track 15: each keeps its own values
 
@@ -90,7 +90,7 @@ Unmute it everywhere.
 - [ ] Reverb, Bass and Treble: Bass and Treble cut at 0, flat at 50, boost at 100; Reverb sets the spring level
 - [ ] Wear from 0 to 100: wow and flutter (slow and fast pitch wobble) grow and the repeats darken; at 0 the
       pitch is steady
-- [ ] Put Spool on a send for the first time, or reset the engine: it is silent for about 7 ms, then works,
+- [ ] Put Oread on a send for the first time, or reset the engine: it is silent for about 7 ms, then works,
       with no burst of old buffer contents
 
 ## Saving and loading
@@ -101,8 +101,8 @@ Unmute it everywhere.
       **qa** loads as last saved
 - [ ] Load **plain**: track 1 has its own sound, nothing of **qa** shows. Load **qa** again: all back
 - [ ] While playing, load **plain** and then **qa** again: nothing freezes, no stray values
-- [ ] Create a new project: put Spool on a track; it starts at its defaults
-- [ ] On a firmware without Spool, open **qa**: it loads, and the rest of the project plays
+- [ ] Create a new project: put Oread on a track; it starts at its defaults
+- [ ] On a firmware without Oread, open **qa**: it loads, and the rest of the project plays
 
 ## CPU
 
@@ -119,7 +119,7 @@ Unmute it everywhere.
 Once the machine's catalog entry is merged and released (the beta site from `staging`, open-xy.com from
 `main`; see [submitting a machine](https://github.com/etcetc000/open-xy/blob/staging/docs/catalog.md#submit-a-machine)):
 
-- [ ] The machine list shows Spool as Community, with its name, maintainer and description
+- [ ] The machine list shows Oread as Community, with its name, maintainer and description
 - [ ] Filtering by its kind (effects) lists it, and filtering by the other kinds doesn't
 - [ ] Searching its name, and each of its keywords, finds it; its details panel lists its keywords, and
       clicking one lists it among that keyword's machines

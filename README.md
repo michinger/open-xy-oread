@@ -1,8 +1,8 @@
-# Spool
+# Oread
 
-A send effect for the OP-XY (Open-XY machine ID `spool`): a three-head tape
+A send effect for the OP-XY (Open-XY machine ID `oread`): a three-head tape
 echo with a spring reverb, in the style of the classic 1970s multi-head tape
-echoes (the Roland RE-201 Space Echo is the reference instrument; Spool is not
+echoes (the Roland RE-201 Space Echo is the reference instrument; Oread is not
 affiliated with or endorsed by Roland). Machine code and tests live at this
 repository's root.
 
@@ -31,7 +31,7 @@ repository's root.
 
 Fixed point Q31 throughout, 64-sample blocks at 44.1 kHz. The tape and spring
 live in the send slot's declared buffer (139,776 bytes), cleared over the
-first five blocks after the effect starts (about 7 ms of silence). Spool
+first five blocks after the effect starts (about 7 ms of silence). Oread
 returns only echo and reverb; the source's dry level is left to the stock mixer.
 
 ## Controls
@@ -48,7 +48,7 @@ of any encoder switches all four positions at once.
 
 ## Sources and licences
 
-Spool's DSP is written from scratch for the Open-XY fixed-point API; no code
+Oread's DSP is written from scratch for the Open-XY fixed-point API; no code
 was copied from other projects. These shaped it:
 
 - Välimäki, Parker and Abel, "Parametric spring reverberation effect", JAES

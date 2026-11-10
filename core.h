@@ -1,7 +1,7 @@
 #pragma once
 #include <opxy/effect.hpp>
 
-namespace spool {
+namespace oread {
 // The send slot's buffer, in Q31 words: the tape loop, then the spring's
 // delay line and its four allpasses' short input and output lines.
 const opxy::u32 kTape = 32768;            // 0.74 s, a power of two

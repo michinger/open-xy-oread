@@ -1,4 +1,4 @@
-// Spool's sound checks, compiled for the host and run by
+// Oread's sound checks, compiled for the host and run by
 // python sdk.py test --machine <folder>.
 #include "../fx.cpp"
 #include <cmath>
@@ -10,20 +10,20 @@ static void check(const char* what, bool ok) {
     if (!ok) { std::printf("FAIL %s\n", what); ++failures; }
 }
 
-static opxy::i32 words[spool::kBufferWords];
-static const opxy::Buffer buffer = {words, spool::kBufferWords};
+static opxy::i32 words[oread::kBufferWords];
+static const opxy::Buffer buffer = {words, oread::kBufferWords};
 static const opxy::i32 kFull = 0x7fffffff;
 
 static opxy::i32 mode(unsigned index) { return static_cast<opxy::i32>((index * 2 + 1) * (0x80000000u / 24)); }
 
 struct Run {
-    spool::State state;
+    oread::State state;
     opxy::i32 p[8];
     std::vector<double> left, right;
     Run(unsigned m, opxy::i32 rate, opxy::i32 intensity) {
         // A dirty buffer, as the slot's previous effect leaves it.
-        for (opxy::u32 i = 0; i < spool::kBufferWords; ++i) words[i] = static_cast<opxy::i32>(i * 2654435761u);
-        spool::initialize(state);
+        for (opxy::u32 i = 0; i < oread::kBufferWords; ++i) words[i] = static_cast<opxy::i32>(i * 2654435761u);
+        oread::initialize(state);
         const opxy::i32 q[8] = {mode(m), rate, intensity, kFull, kFull / 2, kFull / 2 + 1, kFull / 2 + 1, 0};
         for (unsigned i = 0; i < 8; ++i) p[i] = q[i];
     }
@@ -31,7 +31,7 @@ struct Run {
         opxy::i32 l[opxy::block_frames], r[opxy::block_frames];
         for (unsigned b = 0; b < count; ++b) {
             for (unsigned i = 0; i < opxy::block_frames; ++i) l[i] = r[i] = input(left.size() + i);
-            spool::process(state, buffer, l, r, p);
+            oread::process(state, buffer, l, r, p);
             for (unsigned i = 0; i < opxy::block_frames; ++i) {
                 left.push_back(l[i] / 2147483648.0);
                 right.push_back(r[i] / 2147483648.0);
@@ -105,7 +105,7 @@ int main() {
         check("self-oscillation keeps sounding", peak(run.left, end - 44100, end) > 0.05);
         check("self-oscillation stays within full scale", worst <= 1.0 && finite);
         bool bounded = true;
-        for (opxy::u32 i = 0; i < spool::kTape; ++i) bounded = bounded && words[i] <= 0x40000000 && words[i] >= -0x40000000;
+        for (opxy::u32 i = 0; i < oread::kTape; ++i) bounded = bounded && words[i] <= 0x40000000 && words[i] >= -0x40000000;
         check("the tape holds at most half scale", bounded);
         double jump = 0;
         for (size_t i = end - 44100; i < end; ++i) jump = std::fmax(jump, std::fabs(run.left[i] - run.left[i - 1]));
@@ -147,7 +147,7 @@ int main() {
         run.blocks(20, zero);
         const opxy::i32 before = run.state.delay;
         run.p[1] = kFull;
-        const opxy::i32 target = spool::delay_for(kFull);
+        const opxy::i32 target = oread::delay_for(kFull);
         bool smooth = true;
         opxy::i32 previous = before;
         for (unsigned b = 0; b < 2100; ++b) {
@@ -161,15 +161,15 @@ int main() {
     }
     // Outside a send there is no buffer: silence.
     {
-        spool::State state;
-        spool::initialize(state);
+        oread::State state;
+        oread::initialize(state);
         opxy::i32 l[opxy::block_frames], r[opxy::block_frames], p[8] = {};
         for (unsigned i = 0; i < opxy::block_frames; ++i) l[i] = r[i] = 0x10000000;
-        spool::process(state, opxy::Buffer{nullptr, 0}, l, r, p);
+        oread::process(state, opxy::Buffer{nullptr, 0}, l, r, p);
         bool quiet = true;
         for (unsigned i = 0; i < opxy::block_frames; ++i) quiet = quiet && !l[i] && !r[i];
         check("no buffer, silence", quiet);
     }
-    if (!failures) std::puts("spool: all checks pass");
+    if (!failures) std::puts("oread: all checks pass");
     return failures ? 1 : 0;
 }
