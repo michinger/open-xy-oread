@@ -22,8 +22,11 @@ repository's root.
   exponentially (1 to 60), then the gain rises to 1.2, self-oscillating from
   about 90 %. The record head's cubic soft clip bounds it; tape samples never
   exceed half scale.
-- **Tape character:** each playback passes a one-pole low-pass (5.6 kHz at
-  Wear 0, 2 kHz at Wear 100) and an 85 Hz low cut, so repeats darken and thin;
+- **Tape character:** each playback passes two one-pole low-passes in series
+  (12 dB per octave from about 3 kHz at Wear 0 to 1.3 kHz at Wear 100), a
+  35 Hz low cut and a gentle head bump (+10 % below about 120 Hz), so repeats
+  darken and keep their body; the record head's cubic soft clip leans a little
+  (0.1 x^2 (1 - x^2)) for even harmonics at moderate levels;
   Wear adds wow (0.8 Hz), drift (0.13 Hz) and flutter (7 Hz), up to 0.4 % speed
   deviation.
 - **Spring:** four stretched first-order allpasses (dispersion, the chirp) into
@@ -33,8 +36,9 @@ repository's root.
   What reaches the spring is set by Mode.
 - **Bass / Treble:** shelves near 250 Hz and 3 kHz on both sides of the
   return, echo and spring, from cut (0) through flat (50) to +6 dB (100).
-- **Limiter:** one gain per block from the block's peak holds the return under
-  about -9 dBFS, recovering over about 50 ms.
+- **Limiter:** the return is built at quarter scale (12 dB of headroom, so it
+  never clips before the limiter); one gain per block from the last block's
+  peak holds it under about -9 dBFS, recovering over about 50 ms.
 
 Fixed point Q31 throughout, 64-sample blocks at 44.1 kHz. The tape and spring
 live in the send slot's declared buffer (139,776 bytes), cleared over the

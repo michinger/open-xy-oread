@@ -26,11 +26,18 @@ const i32 kGlide = 256;                    // blocks: tape speed settles in abou
 // Wow (0.8 Hz), drift (0.13 Hz) and flutter (7 Hz): phase steps per block.
 const u32 kWowStep = 77912u * 64u, kDriftStep = 12660u * 64u, kFlutterStep = 681729u * 64u;
 const i32 kMostMotion = 8589935;           // 0.4 % speed deviation at Wear 1
-// Tape loss: a one-pole low-pass from about 5.6 kHz (Wear 0) to 2 kHz (Wear 1),
-// then a one-pole low cut near 85 Hz, so repeats darken and thin as on tape.
-const i32 kBrightest = 1181116006;         // 0.55
-const i32 kWearDarkening = 644245094;      // 0.30
-const i32 kRumble = 25769803;              // 0.012
+// Tape loss, warmer than a single gentle pole: two one-poles in series, so
+// each pass rolls off at 12 dB per octave from about 3 kHz (Wear 0) to 1.3 kHz
+// (Wear 1), and the oscillation settles dark and round instead of keeping its edge.
+const i32 kBrightest = 1041915609;         // each pole about 4.7 kHz
+const i32 kWearDarkening = 504852789;      // to about 2 kHz at Wear 1
+// A low cut near 35 Hz keeps DC and rumble out of the loop, and a gentle
+// head bump (+10 % below about 120 Hz per pass) gives the repeats body.
+const i32 kRumble = 10682104;
+const i32 kBump = 36403664, kBumpGain = 214748365;
+// The record head's saturation leans a little: a touch of even harmonics at
+// moderate levels, as tape and a transistor preamp add, gone at full clip.
+const i32 kLean = 214748365;               // 0.1
 // Feedback. The loop's gain is 3 x the feedback word x the sum of the mode's
 // head gains: the repeats are added 4 times, and the record head's soft clip
 // (1.5x for small signals) is halved onto the tape. The knob sets the loop
@@ -41,8 +48,9 @@ const i32 kRumble = 25769803;              // 0.012
 const i32 kFeedbackCurve[17] = {0, 10349231, 39088988, 104511535, 216392095, 370809002, 552397307,
                                 741912950, 922895991, 1084696277, 1222434932, 1335508669, 1425869086,
                                 1496652893, 1619561928, 1840573115, 2061584302};
-// Per mode, 1.25 / (3 x its heads' sum), turning a loop gain into the word.
-const i32 kOneHead = 894784853, kTwoHeads = 639132038, kThreeHeads = 514244169;
+// Per mode, 1.25 / (3 x its heads' sum x 1.1), turning a loop gain into the
+// word; the 1.1 takes back the head bump, so the gain holds in the bass too.
+const i32 kOneHead = 813440775, kTwoHeads = 581029125, kThreeHeads = 467494699;
 const i32 kModeFeedback[12] = {kOneHead, kOneHead, kOneHead, kTwoHeads, kOneHead, kOneHead,
                                kOneHead, kTwoHeads, kTwoHeads, kTwoHeads, kThreeHeads, 0};
 // The spring: four stretched allpasses (dispersion, the spring's chirp) into a
@@ -158,6 +166,17 @@ inline i32 disperse(i32* lines, u32 now, u32 back, i32 x, i32 coefficient) {
     return y;
 }
 
+// The record head: the cubic soft clip plus 0.1 x^2 (1 - x^2), a lean that
+// adds even harmonics at moderate levels and vanishes at full scale.
+// Saturating, so the tape still holds at most half scale.
+i32 record(i32 x) {
+    const i32 square = multiply(x, x);
+    const i32 odd = add(x, -half(multiply(square, x) - x));
+    return add(odd, multiply(multiply(square, kMaximum - square), kLean));
+}
+
+i32 four(i32 x) { return add(add(x, x), add(x, x)); }  // saturating
+
 i32 eight(i32 x) {  // saturating
     const i32 four = add(add(x, x), add(x, x));
     return add(four, four);
@@ -241,7 +260,20 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     u32 write = state.write;
     i32 delay = state.delay, motion = state.motion, h0 = state.head[0], h1 = state.head[1], h2 = state.head[2];
     i32 send = state.send, echo = state.echo, reverb = state.reverb;
-    i32 low_loop = state.low_loop, rumble = state.rumble, spring_damp = state.spring_damp;
+    i32 low_loop = state.low_loop, low_loop2 = state.low_loop2, rumble = state.rumble, bump = state.bump;
+    i32 spring_damp = state.spring_damp;
+    // The limiter: a gain for this block from the last block's peak, ramped
+    // through the block. The return is built at quarter scale (12 dB of
+    // headroom), so nothing clips before the limiter has turned it down.
+    i32 target = state.limit + (kMaximum - state.limit) / kRecovery;  // recover
+    if (state.peak > static_cast<u32>(kCeiling / 4)) {
+        // ceiling / peak, in Q15 then Q31: one division per block.
+        const i32 hold = static_cast<i32>(((static_cast<u32>(kCeiling / 4) >> 16) << 15) / (state.peak >> 16)) << 16;
+        target = hold < target ? hold : target;
+    }
+    const i32 limit_step = (target - state.limit) / static_cast<i32>(opxy::block_frames);
+    i32 limit = state.limit;
+    u32 peak = 0;
     i32 tone_low = state.tone_low, tone_high = state.tone_high;
     i32 tone_low_r = state.tone_low_r, tone_high_r = state.tone_high_r;
     for (unsigned i = 0; i < opxy::block_frames; ++i) {
@@ -263,13 +295,15 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         const i32 heard = multiply(tap(tape, write, d1), h0) + multiply(tap(tape, write, d2), h1) +
                           multiply(tap(tape, write, d3), h2);
         low_loop = add(low_loop, multiply(add(heard, -low_loop), damping));
-        rumble += multiply(add(low_loop, -rumble), kRumble);
-        const i32 played = add(low_loop, -rumble);
+        low_loop2 = add(low_loop2, multiply(add(low_loop, -low_loop2), damping));
+        rumble += multiply(add(low_loop2, -rumble), kRumble);
+        bump += multiply(add(low_loop2, -bump), kBump);
+        const i32 played = add(add(low_loop2, -rumble), multiply(bump, kBumpGain));
 
         // Record: the input plus the repeats, saturated by the record head.
         const i32 input = half(left[i]) + half(right[i]);
         const i32 again = multiply(played, feedback);
-        tape[write] = half(clip(add(input, add(add(again, again), add(again, again)))));
+        tape[write] = half(record(add(input, four(again))));
 
         // The spring hears the input and the echo.
         const i32 out = line[(write - kSpringLength) & (kSpring - 1)];
@@ -291,41 +325,23 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
 
         // The return: echo and spring, each side through its own bass and
         // treble, the right side hearing the spring's second point for width.
-        // The spring returns eight times its quarter-level send.
-        const i32 repeats = multiply(add(played, half(played)), echo);
-        const i32 x_left = add(repeats, eight(multiply(out, reverb)));
-        const i32 x_right = add(repeats, eight(multiply(wide, reverb)));
-        left[i] = tone(x_left, tone_low, tone_high, bass_gain, treble_gain);
-        right[i] = tone(x_right, tone_low_r, tone_high_r, bass_gain, treble_gain);
-        write = (write + 1) & kMask;
-    }
-
-    // The limiter: one gain per block from the block's peak, ramped from the
-    // last block's gain, so the return never runs away however hard the
-    // feedback is pushed.
-    u32 peak = 0;
-    for (unsigned i = 0; i < opxy::block_frames; ++i) {
-        const u32 l = left[i] < 0 ? static_cast<u32>(-(left[i] + 1)) : static_cast<u32>(left[i]);
-        const u32 r = right[i] < 0 ? static_cast<u32>(-(right[i] + 1)) : static_cast<u32>(right[i]);
+        // At quarter scale: repeats at 1.5 x / 4, the spring at 8 x / 4.
+        const i32 repeats = multiply(played, echo);
+        const i32 repeats_q = add(half(half(repeats)), half(half(half(repeats))));
+        const i32 spring_l = multiply(out, reverb), spring_r = multiply(wide, reverb);
+        const i32 q_left = tone(add(repeats_q, add(spring_l, spring_l)), tone_low, tone_high, bass_gain, treble_gain);
+        const i32 q_right = tone(add(repeats_q, add(spring_r, spring_r)), tone_low_r, tone_high_r, bass_gain, treble_gain);
+        const u32 l = q_left < 0 ? static_cast<u32>(-(q_left + 1)) : static_cast<u32>(q_left);
+        const u32 r = q_right < 0 ? static_cast<u32>(-(q_right + 1)) : static_cast<u32>(q_right);
         peak = l > peak ? l : peak;
         peak = r > peak ? r : peak;
-    }
-    i32 target = state.limit + (kMaximum - state.limit) / kRecovery;  // recover
-    if (peak > static_cast<u32>(kCeiling)) {
-        // ceiling / peak, in Q15 then Q31: one division per block.
-        const i32 hold = static_cast<i32>(((static_cast<u32>(kCeiling) >> 16) << 15) / (peak >> 16)) << 16;
-        target = hold < target ? hold : target;
-    }
-    const i32 limit_step = (target - state.limit) / static_cast<i32>(opxy::block_frames);
-    i32 limit = state.limit;
-    if (limit != kMaximum || target != kMaximum) {
-        for (unsigned i = 0; i < opxy::block_frames; ++i) {
-            limit += limit_step;
-            left[i] = multiply(left[i], limit);
-            right[i] = multiply(right[i], limit);
-        }
+        limit += limit_step;
+        left[i] = four(multiply(q_left, limit));
+        right[i] = four(multiply(q_right, limit));
+        write = (write + 1) & kMask;
     }
     state.limit = target;
+    state.peak = peak;
     state.write = write;
     state.delay = delay;
     state.motion = motion;
@@ -336,7 +352,9 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     state.echo = echo;
     state.reverb = reverb;
     state.low_loop = low_loop;
+    state.low_loop2 = low_loop2;
     state.rumble = rumble;
+    state.bump = bump;
     state.spring_damp = spring_damp;
     state.tone_low = tone_low;
     state.tone_high = tone_high;

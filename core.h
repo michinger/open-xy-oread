@@ -19,7 +19,8 @@ struct State {
     opxy::u32 wow, flutter, drift;  // LFO phases
     opxy::i32 head[3], send, echo, reverb;     // gains ramped per sample, Q31
     opxy::i32 feedback, bass, treble, damping; // controls smoothed per block
-    opxy::i32 low_loop, rumble;     // the tape loop's high-frequency loss and low cut
+    opxy::i32 low_loop, low_loop2, rumble, bump;  // the tape loop's loss (two poles), low cut and head bump
+    opxy::u32 peak;                 // the last block's return peak, quarter scale, for the limiter
     opxy::i32 spring_damp;          // the spring's damping filter
     opxy::i32 tone_low, tone_high;  // bass and treble filters, left
     opxy::i32 tone_low_r, tone_high_r;  // bass and treble filters, right

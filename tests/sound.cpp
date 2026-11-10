@@ -78,8 +78,8 @@ int main() {
     {
         Run run(3, 0, 0);
         run.blocks(760, impulse);
-        check("mode 2+3 sounds head 2", peak(run.left, kImpulse + 14831 - 4, kImpulse + 14831 + 4) > 0.1);
-        check("mode 2+3 sounds head 3", peak(run.left, kImpulse + 21467 - 4, kImpulse + 21467 + 4) > 0.1);
+        check("mode 2+3 sounds head 2", peak(run.left, kImpulse + 14831 - 4, kImpulse + 14831 + 4) > 0.05);  // the darker loop spreads a click
+        check("mode 2+3 sounds head 3", peak(run.left, kImpulse + 21467 - 4, kImpulse + 21467 + 4) > 0.05);
         check("mode 2+3 skips head 1", peak(run.left, kImpulse + 7806 - 50, kImpulse + 7806 + 50) < 1e-4);
     }
     // Reverb only: no echo at head 1, but a spring tail right away.
@@ -114,6 +114,7 @@ int main() {
         double settled = 0;
         for (size_t i = end - 44100; i < end; ++i) settled = std::fmax(settled, std::fmax(std::fabs(run.left[i]), std::fabs(run.right[i])));
         check("the limiter holds full feedback under -8 dBFS", settled < 0.4);
+        check("self-oscillation never clips at full scale", worst < 0.99);
     }
     // The Feedback knob's curve rises steadily and self-oscillates only near the top.
     {
