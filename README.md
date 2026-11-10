@@ -42,7 +42,7 @@ repository's root.
 
 Fixed point Q31 throughout, 64-sample blocks at 44.1 kHz. The tape and spring
 live in the send slot's declared buffer (139,776 bytes), cleared over the
-first five blocks after the effect starts (about 7 ms of silence). Oread
+first 18 blocks after the effect starts (about 26 ms of silence), a little per block so no block is heavy. Oread
 returns only echo and reverb; the source's dry level is left to the stock mixer.
 
 ## Controls

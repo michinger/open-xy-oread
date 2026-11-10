@@ -53,7 +53,7 @@ static size_t loudest(const std::vector<double>& x, size_t from, size_t to) {
 static opxy::i32 zero(size_t) { return 0; }
 
 int main() {
-    const size_t start = 640;  // the buffer is cleared within the first blocks
+    const size_t start = 1280;  // the buffer is cleared within the first 18 blocks
     const size_t kImpulse = start + 100;
     auto impulse = [&](size_t n) { return n == kImpulse ? 0x40000000 : 0; };
 

@@ -87,7 +87,7 @@ const i32 kAttack = 8;                     // samples for a cut to land
 // Bass and treble: shelving around 250 Hz and 3 kHz, from cut to +6 dB.
 const i32 kBassCorner = 75161928;          // 0.035
 const i32 kTrebleCorner = 751619277;       // 0.35
-const u32 kClearPerBlock = 8192;           // words zeroed per block after initialize
+const u32 kClearPerBlock = 2048;           // words zeroed per block after initialize: a light block each
 
 // Mode: per-head playback gains, summed heads scaled so the sum stays level.
 const i32 kOne = kMaximum, kTwo = 1503238554 /* 0.7 */, kThree = 1245540515 /* 0.58 */;
@@ -204,7 +204,8 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         return;
     }
     i32* const words = buffer.words;
-    // The buffer holds whatever was there before: clear it first (about 7 ms).
+    // The buffer holds whatever was there before: clear it first, a little
+    // per block so no block is heavy (18 blocks, about 26 ms).
     if (__builtin_expect(state.cleared < kBufferWords, 0)) {
         const u32 end = state.cleared + kClearPerBlock < kBufferWords ? state.cleared + kClearPerBlock : kBufferWords;
         for (u32 i = state.cleared; i < end; ++i) words[i] = 0;
@@ -239,6 +240,11 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     state.treble = smooth(state.treble, control(parameters[6]));
     const i32 wear = control(parameters[7]);
     state.damping = smooth(state.damping, kBrightest - multiply(wear, kWearDarkening));
+    // A head the mode leaves out, once faded, is not read at all: each read is
+    // two samples from the tape in main memory. A fade's last crumbs snap to 0.
+    for (unsigned k = 0; k < 3; ++k)
+        if (!heads[k] && state.head[k] < 0x10000 && state.head[k] > -0x10000) state.head[k] = 0;
+    const bool on0 = state.head[0] || heads[0], on1 = state.head[1] || heads[1], on2 = state.head[2] || heads[2];
     const i32 head_step[3] = {ramp(state.head[0], heads[0]), ramp(state.head[1], heads[1]), ramp(state.head[2], heads[2])};
     // The spring hears a quarter, for headroom in its allpasses.
     const i32 send_step = ramp(state.send, kModeSpring[mode] ? kMaximum / 4 : 0);
@@ -255,6 +261,8 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
                             static_cast<i32>(opxy::block_frames);
     // Bass and treble: each shelf from cut (-1) to +6 dB (+1).
     const i32 bass_gain = (state.bass - 0x40000000) * 2, treble_gain = (state.treble - 0x40000000) * 2;
+    // Both flat (the default): the shelves change nothing, so skip them.
+    const bool shaped = bass_gain > 0x10000 || bass_gain < -0x10000 || treble_gain > 0x10000 || treble_gain < -0x10000;
     const i32 feedback = state.feedback, damping = state.damping;
 
     // The sample loop works on locals, written back after.
@@ -285,9 +293,10 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         // Playback: three heads (tape samples are at most half scale, so their
         // weighted sum stays below full scale), then the tape's
         // high-frequency loss and low cut.
-        const i32 d2 = d1 + multiply(d1, kHead2), d3 = d1 + d1 + multiply(d1, kHead3);
-        const i32 heard = multiply(tap(tape, write, d1), h0) + multiply(tap(tape, write, d2), h1) +
-                          multiply(tap(tape, write, d3), h2);
+        i32 heard = 0;
+        if (on0) heard += multiply(tap(tape, write, d1), h0);
+        if (on1) heard += multiply(tap(tape, write, d1 + multiply(d1, kHead2)), h1);
+        if (on2) heard += multiply(tap(tape, write, d1 + d1 + multiply(d1, kHead3)), h2);
         low_loop = add(low_loop, multiply(add(heard, -low_loop), damping));
         low_loop2 = add(low_loop2, multiply(add(low_loop, -low_loop2), damping));
         rumble += multiply(add(low_loop2, -rumble), kRumble);
@@ -323,8 +332,11 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         const i32 repeats = multiply(played, echo);
         const i32 repeats_q = add(half(half(repeats)), half(half(half(repeats))));
         const i32 spring_l = multiply(out, reverb), spring_r = multiply(wide, reverb);
-        const i32 q_left = tone(add(repeats_q, add(spring_l, spring_l)), tone_low, tone_high, bass_gain, treble_gain);
-        const i32 q_right = tone(add(repeats_q, add(spring_r, spring_r)), tone_low_r, tone_high_r, bass_gain, treble_gain);
+        i32 q_left = add(repeats_q, add(spring_l, spring_l)), q_right = add(repeats_q, add(spring_r, spring_r));
+        if (shaped) {
+            q_left = tone(q_left, tone_low, tone_high, bass_gain, treble_gain);
+            q_right = tone(q_right, tone_low_r, tone_high_r, bass_gain, treble_gain);
+        }
         const u32 l = q_left < 0 ? static_cast<u32>(-(q_left + 1)) : static_cast<u32>(q_left);
         const u32 r = q_right < 0 ? static_cast<u32>(-(q_right + 1)) : static_cast<u32>(q_right);
         peak = l > peak ? l : peak;
@@ -343,13 +355,20 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         target = hold < target ? hold : target;
     }
     i32 limit = state.limit;
-    const bool falling = target < limit;
-    const i32 limit_step = (target - limit) / static_cast<i32>(falling ? kAttack : opxy::block_frames);
-    for (unsigned i = 0; i < opxy::block_frames; ++i) {
-        if (falling ? limit > target : limit < target) limit += limit_step;
-        if (falling && limit < target) limit = target;
-        left[i] = four(multiply(left[i], limit));
-        right[i] = four(multiply(right[i], limit));
+    if (limit == kMaximum && target == kMaximum) {  // nothing to limit: back to full scale only
+        for (unsigned i = 0; i < opxy::block_frames; ++i) {
+            left[i] = four(left[i]);
+            right[i] = four(right[i]);
+        }
+    } else {
+        const bool falling = target < limit;
+        const i32 limit_step = (target - limit) / static_cast<i32>(falling ? kAttack : opxy::block_frames);
+        for (unsigned i = 0; i < opxy::block_frames; ++i) {
+            if (falling ? limit > target : limit < target) limit += limit_step;
+            if (falling && limit < target) limit = target;
+            left[i] = four(multiply(left[i], limit));
+            right[i] = four(multiply(right[i], limit));
+        }
     }
     state.limit = target;
     state.write = write;

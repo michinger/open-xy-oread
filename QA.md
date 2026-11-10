@@ -95,7 +95,7 @@ Unmute it everywhere.
       spring: longer, brighter, more chirp, driven crash; Rv Drive at 7 stays bounded
 - [ ] Wear from 0 to 100: wow and flutter (slow and fast pitch wobble) grow and the repeats darken; at 0 the
       pitch is steady
-- [ ] Put Oread on a send for the first time, or reset the engine: it is silent for about 7 ms, then works,
+- [ ] Put Oread on a send for the first time, or reset the engine: it is silent for about 26 ms, then works,
       with no burst of old buffer contents
 
 ## Saving and loading
