@@ -44,7 +44,10 @@ removes or alters something a person would check on the device updates its lines
 - [ ] The page while playing and while stopped, and after leaving it and coming back: nothing stale,
       missing or drawn twice
 - [ ] With track 1's send at 0 the effect is silent; raising it brings the effect in smoothly
-- [ ] Its Dry control, if it has one, sets how much of track 1's own sound stays as the send rises
+- [ ] Page 1 shows mode, rate, intens, echo; a press of any encoder shows page 2 (reverb, bass, treble,
+      wear) on all four at once, and another press returns. Each control keeps its value across pages
+- [ ] Mode steps one choice per detent through 1, 2, 3, 2+3, 1+R, 2+R, 3+R, 1+2+R, 2+3+R, 1+3+R, 1+2+3+R, R
+- [ ] Track 1's own sound stays at its level as the send rises (Spool has no Dry control)
 - [ ] Stop the sequencer while a note rings: the effect's tail ends naturally, with no click
 - [ ] The same effect on track 16, at the same time as on track 15: each keeps its own values
 
@@ -73,6 +76,22 @@ Then play scene 1.
 - [ ] Muted in scene 2 only: switching between scenes 1 and 2 mutes and unmutes it
 
 Unmute it everywhere.
+
+## Tape echo and spring
+
+- [ ] Mode 1, 2 and 3 with Intens at 0 and a short hit on track 1: one repeat each, head 2 twice and head 3
+      three times as late as head 1; 2+3 gives two repeats
+- [ ] Rate at 0 then 100: repeats go from slow (head 1 about 190 ms) to fast (about 55 ms); turning Rate
+      while repeats ring glides their pitch, like a tape motor, with no clicks
+- [ ] Intens from 0 up: repeats last longer, darken and thin; above about 83 it self-oscillates and builds
+      into saturation, but never gets louder than a loud, steady drone; turning Intens down lets it die away
+- [ ] Modes with R add a spring reverb (wider than the echo); R alone is reverb with no repeats. Switching
+      modes while repeats ring: no clicks, and the spring tail rings out
+- [ ] Reverb, Bass and Treble: Bass and Treble cut at 0, flat at 50, boost at 100; Reverb sets the spring level
+- [ ] Wear from 0 to 100: wow and flutter (slow and fast pitch wobble) grow and the repeats darken; at 0 the
+      pitch is steady
+- [ ] Put Spool on a send for the first time, or reset the engine: it is silent for about 7 ms, then works,
+      with no burst of old buffer contents
 
 ## Saving and loading
 

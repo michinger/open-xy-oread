@@ -20,7 +20,7 @@ const i32 kMaximum = opxy::q31::maximum;
 const u32 kSlowest = 8379;                 // samples: 190 ms
 const u32 kSpeedSpan = 80431;              // (190 / 55 - 1) in Q15
 const u32 kMask = kTape - 1;
-const i32 kGlide = 16384;                  // tape speed settles in about 0.37 s
+const i32 kGlide = 256;                    // blocks: tape speed settles in about 0.37 s
 // Wow (0.8 Hz), drift (0.13 Hz) and flutter (7 Hz): phase steps per block.
 const u32 kWowStep = 77912u * 64u, kDriftStep = 12660u * 64u, kFlutterStep = 681729u * 64u;
 const i32 kMostMotion = 8589935;           // 0.4 % speed deviation at Wear 1
@@ -93,6 +93,20 @@ i32 delay_for(i32 rate) {
     return static_cast<i32>(kSlowest * (0x80000000u / speed));
 }
 
+// One allpass, (z^-k - a) / (1 - a z^-k), with one multiply:
+// y[n] = x[n-k] + a (y[n-k] - x[n]), from its input line and output line.
+inline i32 disperse(i32* lines, u32 now, u32 back, i32 x) {
+    const i32 y = add(lines[back], multiply(add(lines[kAllpass + back], -x), kDispersion));
+    lines[now] = x;
+    lines[kAllpass + now] = y;
+    return y;
+}
+
+i32 eight(i32 x) {  // saturating
+    const i32 four = add(add(x, x), add(x, x));
+    return add(four, four);
+}
+
 u32 mode_for(i32 word) { return ((static_cast<u32>(control(word)) >> 16) * 12) >> 15; }
 
 void silence(opxy::Channel left, opxy::Channel right) {
@@ -126,6 +140,8 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     const u32 mode = mode_for(parameters[0]);
     const i32 target_delay = delay_for(parameters[1]);
     if (!state.delay) state.delay = target_delay;  // start at the set speed
+    // The tape motor glides to a new speed, a ramp each block.
+    const i32 delay_step = (target_delay - state.delay) / kGlide / static_cast<i32>(opxy::block_frames);
     const i32* const heads = kModeHeads[mode];
     state.feedback = smooth(state.feedback, multiply(control(parameters[2]), kMostFeedback));
     state.bass = smooth(state.bass, control(parameters[5]));
@@ -133,7 +149,8 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     const i32 wear = control(parameters[7]);
     state.damping = smooth(state.damping, kBrightest - multiply(wear, kWearDarkening));
     const i32 head_step[3] = {ramp(state.head[0], heads[0]), ramp(state.head[1], heads[1]), ramp(state.head[2], heads[2])};
-    const i32 send_step = ramp(state.send, kModeSpring[mode] ? kMaximum : 0);
+    // The spring hears a quarter, for headroom in its allpasses.
+    const i32 send_step = ramp(state.send, kModeSpring[mode] ? kMaximum / 4 : 0);
     const i32 echo_step = ramp(state.echo, control(parameters[3]));
     const i32 reverb_step = ramp(state.reverb, control(parameters[4]));
 
@@ -158,8 +175,8 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     i32 low_loop = state.low_loop, rumble = state.rumble, spring_damp = state.spring_damp;
     i32 tone_low = state.tone_low, tone_high = state.tone_high;
     for (unsigned i = 0; i < opxy::block_frames; ++i) {
-        // The tape motor glides to a new speed; wow and flutter wobble it.
-        delay += (target_delay - delay) / kGlide;  // settles within a quarter sample
+        // Wow and flutter wobble the tape speed.
+        delay += delay_step;
         motion += motion_step;
         h0 += head_step[0];
         h1 += head_step[1];
@@ -183,35 +200,30 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         const i32 again = multiply(played, feedback);
         tape[write] = half(clip(add(input, add(add(again, again), add(again, again)))));
 
-        // The spring hears the input and the echo, with headroom for its allpasses.
+        // The spring hears the input and the echo.
         const i32 out = line[(write - kSpringLength) & (kSpring - 1)];
         const i32 wide = line[(write - kSpringRight) & (kSpring - 1)];
         spring_damp += multiply(add(out, -spring_damp), kSpringDamp);
-        i32 v = add(multiply(add(half(input), played), send) / 4, multiply(spring_damp, kSpringFeedback));
-        // Each allpass, (z^-k - a) / (1 - a z^-k), with one multiply:
-        // y[n] = x[n-k] + a (y[n-k] - x[n]), from its input and output lines.
-        for (unsigned j = 0; j < kAllpasses; ++j) {
-            i32* const in = allpass + 2 * j * kAllpass;
-            i32* const past = in + kAllpass;
-            const u32 back = (write - kStretch[j]) & (kAllpass - 1), now = write & (kAllpass - 1);
-            const i32 y = add(in[back], multiply(add(past[back], -v), kDispersion));
-            in[now] = v;
-            past[now] = y;
-            v = y;
-        }
+        i32 v = add(multiply(add(half(input), played), send), multiply(spring_damp, kSpringFeedback));
+        const u32 now = write & (kAllpass - 1);
+        v = disperse(allpass, now, (write - kStretch[0]) & (kAllpass - 1), v);
+        v = disperse(allpass + 2 * kAllpass, now, (write - kStretch[1]) & (kAllpass - 1), v);
+        v = disperse(allpass + 4 * kAllpass, now, (write - kStretch[2]) & (kAllpass - 1), v);
+        v = disperse(allpass + 6 * kAllpass, now, (write - kStretch[3]) & (kAllpass - 1), v);
         line[write & (kSpring - 1)] = v;
 
         // The return: echo and spring, through bass and treble, with the
         // spring's second point widening the right side.
+        // The spring returns eight times its quarter-level send.
         const i32 spring = multiply(out, reverb), right_spring = multiply(wide, reverb);
-        const i32 x = add(multiply(add(played, half(played)), echo), add(add(spring, spring), add(spring, spring)));
+        const i32 x = add(multiply(add(played, half(played)), echo), eight(spring));
         tone_low = add(tone_low, multiply(add(x, -tone_low), kBassCorner));
         const i32 high = add(x, -tone_high);
         tone_high = add(tone_high, multiply(high, kTrebleCorner));
         const i32 toned = add(x, add(multiply(tone_low, bass_gain), multiply(high, treble_gain)));
         left[i] = toned;
         const i32 side = add(right_spring, -spring);
-        right[i] = add(toned, add(add(side, side), add(side, side)));
+        right[i] = add(toned, eight(side));
         write = (write + 1) & kMask;
     }
     state.write = write;
