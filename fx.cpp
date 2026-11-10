@@ -43,14 +43,16 @@ const i32 kLean = 214748365;               // 0.1
 // (1.5x for small signals) is halved onto the tape. The knob sets the loop
 // gain itself, the same in every mode, along a curve: up to 85 % the number of
 // repeats before they fade by 60 dB grows exponentially, from 1 to 60, so the
-// musical range gets most of the travel; from there the gain rises to 1.2,
-// self-oscillating from about 90 %. 17 points of gain / 1.25, interpolated.
-const i32 kFeedbackCurve[17] = {0, 10349231, 39088988, 104511535, 216392095, 370809002, 552397307,
-                                741912950, 922895991, 1084696277, 1222434932, 1335508669, 1425869086,
-                                1496652893, 1619561928, 1840573115, 2061584302};
-// Per mode, 1.25 / (3 x its heads' sum x 1.1), turning a loop gain into the
+// musical range gets most of the travel; from there the gain climbs to 2.0,
+// self-oscillating from about 86 % and driving ever deeper into the record
+// head's saturation, for the original's aggressive runaway. 17 points of
+// gain / 2.5, interpolated.
+const i32 kFeedbackCurve[17] = {0, 5174616, 19544494, 52255768, 108196047, 185404501, 276198653,
+                                370956475, 461447996, 542348138, 611217466, 667754335, 712934543,
+                                748326447, 924313425, 1321150172, 1717986918};
+// Per mode, 2.5 / (3 x its heads' sum x 1.1), turning a loop gain into the
 // word; the 1.1 takes back the head bump, so the gain holds in the bass too.
-const i32 kOneHead = 813440775, kTwoHeads = 581029125, kThreeHeads = 467494699;
+const i32 kOneHead = 1626881552, kTwoHeads = 1162058251, kThreeHeads = 934989397;
 const i32 kModeFeedback[12] = {kOneHead, kOneHead, kOneHead, kTwoHeads, kOneHead, kOneHead,
                                kOneHead, kTwoHeads, kTwoHeads, kTwoHeads, kThreeHeads, 0};
 // The spring: four stretched allpasses (dispersion, the spring's chirp) into a
@@ -77,10 +79,11 @@ const i32 kChirp[16] = {1288490189, 1324281583, 1360072977, 1395864371, 14316557
 const i32 kDriveGain[8] = {134217728, 201326592, 268435456, 402653184,
                            536870912, 805306368, 1073741824, 1610612736};  // Q27
 const i32 kDriveBack[8] = {0, 954437177, 715827883, 477218588, 357913941, 238609294, 178956971, 119304647};
-// The output limiter holds the return's peaks under about -9 dBFS, reacting
-// within a block and recovering over about 50 ms.
+// The output limiter holds the return's peaks under about -9 dBFS, cutting
+// within 8 samples of the block it hears and recovering over about 50 ms.
 const i32 kCeiling = 760000000;            // 0.354: -9 dBFS
 const i32 kRecovery = 32;                  // blocks: a 32nd of the way back per block
+const i32 kAttack = 8;                     // samples for a cut to land
 // Bass and treble: shelving around 250 Hz and 3 kHz, from cut to +6 dB.
 const i32 kBassCorner = 75161928;          // 0.035
 const i32 kTrebleCorner = 751619277;       // 0.35
@@ -262,17 +265,8 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
     i32 send = state.send, echo = state.echo, reverb = state.reverb;
     i32 low_loop = state.low_loop, low_loop2 = state.low_loop2, rumble = state.rumble, bump = state.bump;
     i32 spring_damp = state.spring_damp;
-    // The limiter: a gain for this block from the last block's peak, ramped
-    // through the block. The return is built at quarter scale (12 dB of
-    // headroom), so nothing clips before the limiter has turned it down.
-    i32 target = state.limit + (kMaximum - state.limit) / kRecovery;  // recover
-    if (state.peak > static_cast<u32>(kCeiling / 4)) {
-        // ceiling / peak, in Q15 then Q31: one division per block.
-        const i32 hold = static_cast<i32>(((static_cast<u32>(kCeiling / 4) >> 16) << 15) / (state.peak >> 16)) << 16;
-        target = hold < target ? hold : target;
-    }
-    const i32 limit_step = (target - state.limit) / static_cast<i32>(opxy::block_frames);
-    i32 limit = state.limit;
+    // The return is built at quarter scale (12 dB of headroom), so nothing
+    // clips before the limiter below has turned it down.
     u32 peak = 0;
     i32 tone_low = state.tone_low, tone_high = state.tone_high;
     i32 tone_low_r = state.tone_low_r, tone_high_r = state.tone_high_r;
@@ -335,13 +329,29 @@ void process(State& state, opxy::Buffer buffer, opxy::Channel left, opxy::Channe
         const u32 r = q_right < 0 ? static_cast<u32>(-(q_right + 1)) : static_cast<u32>(q_right);
         peak = l > peak ? l : peak;
         peak = r > peak ? r : peak;
-        limit += limit_step;
-        left[i] = four(multiply(q_left, limit));
-        right[i] = four(multiply(q_right, limit));
+        left[i] = q_left;
+        right[i] = q_right;
         write = (write + 1) & kMask;
     }
+
+    // The limiter: this block's own peak sets its gain (one division), so the
+    // return holds under the ceiling however hard the feedback drives. A cut
+    // lands within 8 samples, a rise recovers a 32nd of the way per block.
+    i32 target = state.limit + (kMaximum - state.limit) / kRecovery;
+    if (peak > static_cast<u32>(kCeiling / 4)) {
+        const i32 hold = static_cast<i32>(((static_cast<u32>(kCeiling / 4) >> 16) << 15) / (peak >> 16)) << 16;
+        target = hold < target ? hold : target;
+    }
+    i32 limit = state.limit;
+    const bool falling = target < limit;
+    const i32 limit_step = (target - limit) / static_cast<i32>(falling ? kAttack : opxy::block_frames);
+    for (unsigned i = 0; i < opxy::block_frames; ++i) {
+        if (falling ? limit > target : limit < target) limit += limit_step;
+        if (falling && limit < target) limit = target;
+        left[i] = four(multiply(left[i], limit));
+        right[i] = four(multiply(right[i], limit));
+    }
     state.limit = target;
-    state.peak = peak;
     state.write = write;
     state.delay = delay;
     state.motion = motion;

@@ -19,8 +19,8 @@ repository's root.
   Several heads are summed at 0.7 or 0.58 each so the level stays even.
 - **Feedback** sets the loop gain itself, the same in every mode, along a
   curve: up to 85 % the number of repeats before they fade by 60 dB grows
-  exponentially (1 to 60), then the gain rises to 1.2, self-oscillating from
-  about 90 %. The record head's cubic soft clip bounds it; tape samples never
+  exponentially (1 to 60), then the gain climbs to 2.0, self-oscillating from
+  about 86 % and driving ever deeper into the record head's saturation. The record head's cubic soft clip bounds it; tape samples never
   exceed half scale.
 - **Tape character:** each playback passes two one-pole low-passes in series
   (12 dB per octave from about 3 kHz at Wear 0 to 1.3 kHz at Wear 100), a

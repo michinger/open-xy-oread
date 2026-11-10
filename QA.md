@@ -84,7 +84,7 @@ Unmute it everywhere.
 - [ ] Rate at 0 then 100: repeats go from slow (head 1 about 177 ms) to fast (about 69 ms); turning Rate
       while repeats ring glides their pitch, like a tape motor, with no clicks
 - [ ] Feedback from 0 up, in mode 1 and in 1+2+3+R: repeats last longer at the same knob position in both;
-      at 40 they fade quickly; only above about 90 does it self-oscillate, and turning it down lets it die away
+      at 40 they fade quickly; only above about 86 does it self-oscillate, getting grittier towards 100, and turning it down lets it die away
 - [ ] Self-oscillation at Feedback 100 with Rate swept: never louder than about -9 dBFS on the return (the
       limiter); no crackle when the limiter works
 - [ ] Modes with R add a spring reverb (wider than the echo); R alone is reverb with no repeats. Switching

@@ -113,7 +113,9 @@ int main() {
         check("no wrapped samples (jumps) at full intensity", jump < 1.5);
         double settled = 0;
         for (size_t i = end - 44100; i < end; ++i) settled = std::fmax(settled, std::fmax(std::fabs(run.left[i]), std::fabs(run.right[i])));
-        check("the limiter holds full feedback under -8 dBFS", settled < 0.4);
+        char held[80];
+        std::snprintf(held, sizeof held, "the limiter holds full feedback under -8 dBFS (%.3f, worst %.3f)", settled, worst);
+        check(held, settled < 0.4);
         check("self-oscillation never clips at full scale", worst < 0.99);
     }
     // The Feedback knob's curve rises steadily and self-oscillates only near the top.
@@ -126,9 +128,10 @@ int main() {
             last = f;
         }
         check("the feedback curve never falls", rising);
-        // The curve holds the loop gain / 1.25: below 1 until about 90 %.
-        check("no self-oscillation at 85 %", 1.25 * oread::feedback_for(static_cast<opxy::i32>(0.85 * 2147483647.0)) / 2147483648.0 < 1.0);
-        check("self-oscillation at 95 %", 1.25 * oread::feedback_for(static_cast<opxy::i32>(0.95 * 2147483647.0)) / 2147483648.0 > 1.0);
+        // The curve holds the loop gain / 2.5: below 1 until about 86 %.
+        check("no self-oscillation at 85 %", 2.5 * oread::feedback_for(static_cast<opxy::i32>(0.85 * 2147483647.0)) / 2147483648.0 < 1.0);
+        check("self-oscillation at 95 %", 2.5 * oread::feedback_for(static_cast<opxy::i32>(0.95 * 2147483647.0)) / 2147483648.0 > 1.0);
+        check("full feedback drives hard (loop gain 2)", 2.5 * oread::feedback_for(0x7fffffff) / 2147483648.0 > 1.95);
     }
     // The knob means the same in every mode: at 85 % even all three heads die away,
     // and at 40 % the repeats fade fast.
