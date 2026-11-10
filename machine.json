@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "sdk": "1.10",
+  "kind": "effect",
+  "description": "A three-head tape echo with spring reverb: twelve modes, tape speed glide, self-oscillating intensity, wow, flutter and saturation."
+}
