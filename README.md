@@ -10,15 +10,17 @@ repository's root.
 
 - **Tape loop:** one record head and three playback heads at 1 : 2 : 3
   spacing (an approximation of the original's head spacing). Head 1 is 190 ms
-  at Rate 0 and 55 ms at Rate 100; heads 2 and 3 are two and three times later.
+  at Rate 0 and 27.5 ms at Rate 100; heads 2 and 3 are two and three times later.
   Rate is tape speed: a change glides (about 0.37 s), bending the repeats'
   pitch as a capstan motor would.
 - **Mode** (12 choices, as on the original's selector): `1`, `2`, `3`, `2+3`
   echo only; `1+R` ... `1+2+3+R` echo with the spring; `R` spring only.
   Several heads are summed at 0.7 or 0.58 each so the level stays even.
-- **Intensity** is the record level of the repeats: loop gain up to 1.2, so the
-  echo self-oscillates above about 83 %. The record head's cubic soft clip
-  bounds it; tape samples never exceed half scale.
+- **Feedback** sets the loop gain itself, the same in every mode, along a
+  curve: up to 85 % the number of repeats before they fade by 60 dB grows
+  exponentially (1 to 60), then the gain rises to 1.2, self-oscillating from
+  about 90 %. The record head's cubic soft clip bounds it; tape samples never
+  exceed half scale.
 - **Tape character:** each playback passes a one-pole low-pass (5.6 kHz at
   Wear 0, 2 kHz at Wear 100) and an 85 Hz low cut, so repeats darken and thin;
   Wear adds wow (0.8 Hz), drift (0.13 Hz) and flutter (7 Hz), up to 0.4 % speed
@@ -26,8 +28,12 @@ repository's root.
 - **Spring:** four stretched first-order allpasses (dispersion, the chirp) into
   a 42 ms damped feedback line; the right side reads a second point of the
   line, so the reverb is wide while the echo stays centred.
-- **Bass / Treble:** shelves near 250 Hz and 3 kHz on the return, from cut
-  (0) through flat (50) to +6 dB (100).
+- **Echo Vol / Rv Vol:** the return levels of the repeats and of the spring.
+  What reaches the spring is set by Mode.
+- **Bass / Treble:** shelves near 250 Hz and 3 kHz on both sides of the
+  return, echo and spring, from cut (0) through flat (50) to +6 dB (100).
+- **Limiter:** one gain per block from the block's peak holds the return under
+  about -9 dBFS, recovering over about 50 ms.
 
 Fixed point Q31 throughout, 64-sample blocks at 44.1 kHz. The tape and spring
 live in the send slot's declared buffer (139,776 bytes), cleared over the
@@ -41,10 +47,20 @@ of any encoder switches all four positions at once.
 
 | Encoder | Page 1 | Page 2 |
 | --- | --- | --- |
-| 1 | Mode | Reverb |
+| 1 | Mode | Rv Vol |
 | 2 | Rate | Bass |
-| 3 | Intens(ity) | Treble |
-| 4 | Echo (level) | Wear |
+| 3 | Feedback | Treble |
+| 4 | Echo Vol | Wear |
+
+Shift shows a row for the spring, one choice per detent; each first choice is
+the original sound, which a new project starts with:
+
+| Encoder | Shift row | Range |
+| --- | --- | --- |
+| 1 | Rv Decay | 0..15: about 1 s to 4 s |
+| 2 | Rv Tone | 0..15: damping from about 3 kHz (dark) to 12 kHz (bright) |
+| 3 | Rv Chirp | 0..15: allpass dispersion 0.6 to 0.85, more "boing" |
+| 4 | Rv Drive | off, 1..7: the spring's input driven 1.5x to 12x into a soft clip |
 
 ## Sources and licences
 

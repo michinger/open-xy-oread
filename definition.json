@@ -51,7 +51,7 @@
     },
     {
       "id": "echo",
-      "label": "Echo",
+      "label": "Echo Vol",
       "default": 0.7,
       "display": "percent",
       "mapping": {
@@ -62,7 +62,7 @@
     },
     {
       "id": "reverb",
-      "label": "Reverb",
+      "label": "Rv Vol",
       "default": 0.35,
       "display": "percent",
       "control": 0,
