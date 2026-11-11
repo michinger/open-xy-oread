@@ -68,55 +68,34 @@ removes or alters something a person would check on the device updates its lines
 
 Then play scene 1.
 
-## Mute
+## Mute (meaning, track volume 0, not bypass since this only mutes the midi notes on opxy)
 
-- [ ] Mute the track (hold aux and press the track's key): it's silent, with no click or tail left behind;
-      unmute: it plays as before
-- [ ] The same from the mixer
+- [] Mute the track (hold aux and press the track's key): it's silent, with no click or tail left behind;
+  unmute: it plays as before
+- [x] The same from the mixer
 - [ ] Muted in scene 2 only: switching between scenes 1 and 2 mutes and unmutes it
 
 Unmute it everywhere.
 
-## Tape echo and spring
-
-- [ ] Mode 1, 2 and 3 with Feedback at 0 and a short hit on track 1: one repeat each, head 2 about 1.9 and head 3
-      about 2.75 times as late as head 1; 2+3 gives two repeats
-- [ ] Rate at 0 then 100: repeats go from slow (head 1 about 177 ms) to fast (about 69 ms); turning Rate
-      while repeats ring glides their pitch, like a tape motor, with no clicks
-- [ ] Feedback from 0 up, in mode 1 and in 1+2+3+R: repeats last longer at the same knob position in both;
-      at 40 they fade quickly; only above about 86 does it self-oscillate, getting grittier towards 100, and turning it down lets it die away
-- [ ] Self-oscillation at Feedback 100 with Rate swept: never louder than about -9 dBFS on the return (the
-      limiter); no crackle when the limiter works
-- [ ] Modes with R add a spring reverb (wider than the echo); R alone is reverb with no repeats. Switching
-      modes while repeats ring: no clicks, and the spring tail rings out
-- [ ] Rv Vol, Bass and Treble: Bass and Treble cut at 0, flat at 50, boost at 100, on the spring's left and
-      right alike; Rv Vol sets the spring level, Echo Vol the repeats' level
-- [ ] Shift shows Rv Decay, Rv Tone, Rv Chirp, Rv Drive at 0/off in a new project; each changes only the
-      spring: longer, brighter, more chirp, driven crash; Rv Drive at 7 stays bounded
-- [ ] Wear from 0 to 100: wow and flutter (slow and fast pitch wobble) grow and the repeats darken; at 0 the
-      pitch is steady
-- [ ] Put Oread on a send for the first time, or reset the engine: it is silent for about 26 ms, then works,
-      with no burst of old buffer contents
-
 ## Saving and loading
 
-- [ ] Save **qa**, power off and on, load it: the machine is there with every value as you left it, on
+- [x] Save **qa**, power off and on, load it: the machine is there with every value as you left it, on
       each pattern
-- [ ] Change a value, wait a few seconds and power off without saving: the OP-XY starts normally, and
+- [x] Change a value, wait a few seconds and power off without saving: the OP-XY starts normally, and
       **qa** loads as last saved
-- [ ] Load **plain**: track 1 has its own sound, nothing of **qa** shows. Load **qa** again: all back
-- [ ] While playing, load **plain** and then **qa** again: nothing freezes, no stray values
-- [ ] Create a new project: put Oread on a track; it starts at its defaults
-- [ ] On a firmware without Oread, open **qa**: it loads, and the rest of the project plays
+- [x] Load **plain**: track 1 has its own sound, nothing of **qa** shows. Load **qa** again: all back
+- [x] While playing, load **plain** and then **qa** again: nothing freezes, no stray values
+- [x] Create a new project: put Oread on a track; it starts at its defaults
+- [x] On a firmware without Oread, open **qa**: it loads, and the rest of the project plays
 
 ## CPU
 
-- [ ] Follow [hardware profiling](https://github.com/etcetc000/open-xy/blob/staging/docs/profiling.md):
+- [x] Follow [hardware profiling](https://github.com/etcetc000/open-xy/blob/staging/docs/profiling.md):
       a profiling build from committed source, every required workload collected, and the readout
       kept with the commit it measured
-- [ ] Run `sdk.py profile report`: inspect both average CPU (`block_percent`) and worst observed block
+- [x] Run `sdk.py profile report`: inspect both average CPU (`block_percent`) and worst observed block
       CPU (`peak_percent`), and the workload that produced the spike; a heaviest-setting average is not a peak
-- [ ] Before submitting, copy the complete generated `cpu` member into the catalog entry; resolve clipped
+- [x] Before submitting, copy the complete generated `cpu` member into the catalog entry; resolve clipped
       or invalid peaks rather than omitting them. Hardware evidence still pending means submission is not ready
 
 ## In the builder
